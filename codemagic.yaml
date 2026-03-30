@@ -5,15 +5,16 @@ workflows:
     environment:
       xcode: latest
     scripts:
-      - name: Build
+      - name: Build unsigned IPA
         script: |
           xcodebuild \
             -project Device1Finder.xcodeproj \
             -scheme Device1Finder \
             -configuration Release \
             -sdk iphoneos \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            -archivePath build/Device1Finder.xcarchive \
-            archive
-    artifacts:
-      - build/**/*.xcarchive
+            build
+          mkdir -p Payload
+          cp -r build/Build/Products/Release-iphoneos/Device1Finder.app Payload/
+          zip -r Device1Finder.ipa Payload/
