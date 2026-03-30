@@ -15,6 +15,10 @@ workflows:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             build
-          mkdir -p Payload
-          cp -r build/Build/Products/Release-iphoneos/Device1Finder.app Payload/
-          zip -r Device1Finder.ipa Payload/
+          mkdir -p $CM_BUILD_DIR/artifacts/Payload
+          cp -r build/Build/Products/Release-iphoneos/Device1Finder.app \
+            $CM_BUILD_DIR/artifacts/Payload/
+          cd $CM_BUILD_DIR/artifacts
+          zip -r $CM_BUILD_DIR/artifacts/Device1Finder.ipa Payload/
+    artifacts:
+      - $CM_BUILD_DIR/artifacts/Device1Finder.ipa
