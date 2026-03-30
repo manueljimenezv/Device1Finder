@@ -1,0 +1,19 @@
+workflows:
+  ios-build:
+    name: iOS Build
+    instance_type: mac_mini_m1
+    environment:
+      xcode: latest
+    scripts:
+      - name: Build
+        script: |
+          xcodebuild \
+            -project Device1Finder.xcodeproj \
+            -scheme Device1Finder \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            -archivePath build/Device1Finder.xcarchive \
+            archive
+    artifacts:
+      - build/**/*.xcarchive
