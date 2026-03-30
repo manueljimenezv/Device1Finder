@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ── Required Bluetooth permission keys ── -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Device1Finder needs Bluetooth to scan for and identify nearby BLE devices.</string>
+
+    <!-- iOS 13 and earlier fallback -->
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Device1Finder needs Bluetooth to communicate with BLE peripherals.</string>
+
+    <!-- ── App transport / launch ── -->
+    <key>UILaunchScreen</key>
+    <dict/>
+
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>bluetooth-le</string>
+    </array>
+
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+
+    <!-- iPad support -->
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+
+    <key>UIDeviceFamily</key>
+    <array>
+        <integer>1</integer>  <!-- iPhone -->
+        <integer>2</integer>  <!-- iPad -->
+    </array>
+</dict>
+</plist>
