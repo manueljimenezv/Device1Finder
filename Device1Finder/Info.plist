@@ -2,49 +2,40 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- ── Required Bluetooth permission keys ── -->
+    <key>CFBundleExecutable</key>
+    <string>Device1Finder</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.example.device1finder</string>
+    <key>CFBundleName</key>
+    <string>Device1Finder</string>
+    <key>CFBundleDisplayName</key>
+    <string>Device1Finder</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array><string>iPhoneOS</string></array>
+    <key>MinimumOSVersion</key>
+    <string>16.0</string>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array><string>bluetooth-le</string><string>arm64</string></array>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>Device1Finder needs Bluetooth to scan for and identify nearby BLE devices.</string>
-
-    <!-- iOS 13 and earlier fallback -->
     <key>NSBluetoothPeripheralUsageDescription</key>
     <string>Device1Finder needs Bluetooth to communicate with BLE peripherals.</string>
-
-    <!-- ── App transport / launch ── -->
-    <key>UILaunchScreen</key>
-    <dict/>
-
-    <key>UIApplicationSceneManifest</key>
-    <dict>
-        <key>UIApplicationSupportsMultipleScenes</key>
-        <false/>
-    </dict>
-
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>bluetooth-le</string>
-    </array>
-
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
-
-    <!-- iPad support -->
-    <key>UISupportedInterfaceOrientations~ipad</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-        <string>UIInterfaceOrientationPortraitUpsideDown</string>
-        <string>UIInterfaceOrientationLandscapeLeft</string>
-        <string>UIInterfaceOrientationLandscapeRight</string>
-    </array>
-
-    <key>UIDeviceFamily</key>
-    <array>
-        <integer>1</integer>  <!-- iPhone -->
-        <integer>2</integer>  <!-- iPad -->
-    </array>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
 </dict>
 </plist>
