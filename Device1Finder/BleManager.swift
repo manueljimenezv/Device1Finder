@@ -8,7 +8,6 @@ final class BleManager: NSObject, ObservableObject {
     @Published var statusMessage: String = "Ready"
     @Published var bluetoothState: CBManagerState = .unknown
 
-    /// Mirrors etTarget filter — set from UI
     var targetFilter: String = ""
 
     private var centralManager: CBCentralManager!
@@ -31,17 +30,14 @@ final class BleManager: NSObject, ObservableObject {
             return
         }
         guard !isScanning else { return }
-
         devices.removeAll()
         deviceMap.removeAll()
         statusMessage = "Scanning (no filter)…"
         isScanning = true
-
         centralManager.scanForPeripherals(
             withServices: [BleConstants.serviceUUID],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
-
         scanTimer = Timer.scheduledTimer(withTimeInterval: BleConstants.scanTimeout, repeats: false) { [weak self] _ in
             self?.stopScan()
         }
@@ -73,9 +69,12 @@ final class BleManager: NSObject, ObservableObject {
         centralManager.connect(peripheral, options: nil)
     }
 
-    private func disconnect(_ peripheral: CBPeripheral) {
-        centralManager.cancelPeripheralConnection(peripheral)
-        activeConnections.removeValue(forKey: peripheral.identifier)
+    private func disconnect(_ peripheral: CBPeripheral, delay: TimeInterval = 0.5) {
+        // Add delay before disconnect so iPad BLE stack has time to process the write
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.centralManager.cancelPeripheralConnection(peripheral)
+            self?.activeConnections.removeValue(forKey: peripheral.identifier)
+        }
     }
 }
 
@@ -84,10 +83,10 @@ extension BleManager: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         bluetoothState = central.state
         switch central.state {
-        case .poweredOn:  statusMessage = "Ready"
-        case .poweredOff: statusMessage = "Bluetooth is OFF"; isScanning = false
-        case .unauthorized: statusMessage = "BLE permissions required"
-        default: statusMessage = "Bluetooth not available"
+        case .poweredOn:     statusMessage = "Ready"
+        case .poweredOff:    statusMessage = "Bluetooth is OFF"; isScanning = false
+        case .unauthorized:  statusMessage = "BLE permissions required"
+        default:             statusMessage = "Bluetooth not available"
         }
     }
 
@@ -95,11 +94,9 @@ extension BleManager: CBCentralManagerDelegate {
                         didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any],
                         rssi RSSI: NSNumber) {
-
         let rssiVal = RSSI.intValue
         let pid = peripheral.identifier
 
-        // Extract manufacturer specific data and check MFG_ID (mirrors handleResult)
         var idHex = ""
         if let mfgData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data,
            mfgData.count >= 10 {
@@ -110,7 +107,6 @@ extension BleManager: CBCentralManagerDelegate {
             }
         }
 
-        // Apply target filter (mirrors etTarget logic)
         if !targetFilter.isEmpty {
             let knownFull = deviceMap[pid]?.fullId?.uppercased() ?? ""
             if targetFilter != idHex && targetFilter != knownFull { return }
@@ -126,10 +122,7 @@ extension BleManager: CBCentralManagerDelegate {
             devices.append(found)
             devices.sort { $0.rssi > $1.rssi }
         }
-
         statusMessage = "Found=\(devices.count)"
-
-        // Auto-read serial if not yet known (mirrors maybeReadFullSerial)
         maybeReadFullSerial(pid: pid)
     }
 
@@ -138,7 +131,6 @@ extension BleManager: CBCentralManagerDelegate {
         let now = Date()
         if let last = lastSerialReadAt[pid], now.timeIntervalSince(last) < serialReadCooldown { return }
         lastSerialReadAt[pid] = now
-
         readSerial(from: device) { [weak self] serial in
             guard let serial = serial, !serial.isEmpty else { return }
             self?.deviceMap[pid]?.fullId = serial.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -168,28 +160,48 @@ extension BleManager: CBPeripheralDelegate {
             return
         }
         for service in services where service.uuid == BleConstants.serviceUUID {
-            peripheral.discoverCharacteristics([BleConstants.identifyCharUUID, BleConstants.serialCharUUID], for: service)
+            peripheral.discoverCharacteristics(
+                [BleConstants.identifyCharUUID, BleConstants.serialCharUUID],
+                for: service
+            )
         }
     }
 
-    func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+    func peripheral(_ peripheral: CBPeripheral,
+                    didDiscoverCharacteristicsFor service: CBService,
+                    error: Error?) {
+
         let chars = service.characteristics ?? []
         let identifyChar = chars.first(where: { $0.uuid == BleConstants.identifyCharUUID })
         let serialChar   = chars.first(where: { $0.uuid == BleConstants.serialCharUUID })
 
         if let (cmd, _) = pendingCommands[peripheral.identifier] {
             if let char = identifyChar {
-                // Use WRITE_TYPE_NO_RESPONSE to match Android WRITE_TYPE_NO_RESPONSE
                 let data = Data([cmd.rawValue])
-                peripheral.writeValue(data, for: char, type: .withoutResponse)
-                statusMessage = String(format: "to write cmd=0x%02X", cmd.rawValue)
-                // complete immediately since no response expected
-                completePendingCommand(for: peripheral, success: true)
-                disconnect(peripheral)
+
+                // KEY FIX: Check characteristic properties to decide write type.
+                // Android uses WRITE_TYPE_NO_RESPONSE — use .withoutResponse if supported,
+                // otherwise fall back to .withResponse (needed on some iPads).
+                let writeType: CBCharacteristicWriteType
+                if char.properties.contains(.writeWithoutResponse) {
+                    writeType = .withoutResponse
+                } else {
+                    writeType = .withResponse
+                }
+
+                peripheral.writeValue(data, for: char, type: writeType)
+                statusMessage = String(format: "Sent 0x%02X", cmd.rawValue)
+
+                if writeType == .withoutResponse {
+                    // No delegate callback for withoutResponse — complete after delay
+                    completePendingCommand(for: peripheral, success: true)
+                    disconnect(peripheral, delay: 0.5)
+                }
+                // If withResponse, wait for didWriteValueFor callback
             } else {
                 statusMessage = "No identify char"
                 completePendingCommand(for: peripheral, success: false)
-                disconnect(peripheral)
+                disconnect(peripheral, delay: 0)
             }
         }
 
@@ -199,19 +211,26 @@ extension BleManager: CBPeripheralDelegate {
             } else {
                 statusMessage = "serial read: service/char missing"
                 completeSerialRead(for: peripheral, value: nil)
-                disconnect(peripheral)
+                disconnect(peripheral, delay: 0)
             }
         }
     }
 
-    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+    // Called only when write type is .withResponse
+    func peripheral(_ peripheral: CBPeripheral,
+                    didWriteValueFor characteristic: CBCharacteristic,
+                    error: Error?) {
         if characteristic.uuid == BleConstants.identifyCharUUID {
-            completePendingCommand(for: peripheral, success: error == nil)
-            disconnect(peripheral)
+            let success = error == nil
+            statusMessage = success ? "Identify sent ✓" : "Write failed: \(error?.localizedDescription ?? "")"
+            completePendingCommand(for: peripheral, success: success)
+            disconnect(peripheral, delay: 0.3)
         }
     }
 
-    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+    func peripheral(_ peripheral: CBPeripheral,
+                    didUpdateValueFor characteristic: CBCharacteristic,
+                    error: Error?) {
         if characteristic.uuid == BleConstants.serialCharUUID {
             var serialString: String?
             if let data = characteristic.value, error == nil {
@@ -223,7 +242,7 @@ extension BleManager: CBPeripheralDelegate {
                 statusMessage = "serial read: status=ERROR"
             }
             completeSerialRead(for: peripheral, value: serialString)
-            disconnect(peripheral)
+            disconnect(peripheral, delay: 0.3)
         }
     }
 
