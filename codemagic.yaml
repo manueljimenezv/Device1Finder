@@ -15,9 +15,56 @@ workflows:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             build
+
           mkdir -p $CM_BUILD_DIR/artifacts/Payload
           cp -r build/Build/Products/Release-iphoneos/Device1Finder.app \
             $CM_BUILD_DIR/artifacts/Payload/
+
+          # Inject correct Info.plist
+          cat > $CM_BUILD_DIR/artifacts/Payload/Device1Finder.app/Info.plist << 'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>Device1Finder</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.example.device1finder</string>
+    <key>CFBundleName</key>
+    <string>Device1Finder</string>
+    <key>CFBundleDisplayName</key>
+    <string>Device1Finder</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array><string>iPhoneOS</string></array>
+    <key>MinimumOSVersion</key>
+    <string>16.0</string>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array><string>bluetooth-le</string><string>arm64</string></array>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Device1Finder needs Bluetooth to scan for and identify nearby BLE devices.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Device1Finder needs Bluetooth to communicate with BLE peripherals.</string>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+</dict>
+</plist>
+PLIST
+
           cd $CM_BUILD_DIR/artifacts
           zip -r $CM_BUILD_DIR/artifacts/Device1Finder.ipa Payload/
     artifacts:
